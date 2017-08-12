@@ -29,10 +29,11 @@ import (
 type SyntaxError struct {
 	Msg  string
 	Line int
+	Col  int
 }
 
 func (e *SyntaxError) Error() string {
-	return "XML syntax error on line " + strconv.Itoa(e.Line) + ": " + e.Msg
+	return "XML syntax error on line " + strconv.Itoa(e.Line) + ":" + strconv.Itoa(e.Col) + ": " + e.Msg
 }
 
 // A Name represents an XML name (Local) annotated
@@ -196,6 +197,8 @@ type Decoder struct {
 	ns             map[string]string
 	err            error
 	line           int
+	col            int
+	colMax         int
 	offset         int64
 	unmarshalDepth int
 }
@@ -425,7 +428,15 @@ func (d *Decoder) pushNs(local string, url string, ok bool) {
 
 // Creates a SyntaxError with the current line number.
 func (d *Decoder) syntaxError(msg string) error {
-	return &SyntaxError{Msg: msg, Line: d.line}
+	return &SyntaxError{Msg: msg, Line: d.line, Col: d.col}
+}
+
+// DecoderSyntaxError creates an error at the location of decoder.
+//
+// The location described by the error indicates the decoder's
+// position at the time this function was called.
+func DecoderSyntaxError(d *Decoder, msg string) error {
+	return d.syntaxError(msg)
 }
 
 // Record that we are ending an element with the given name.
@@ -876,8 +887,11 @@ func (d *Decoder) getc() (b byte, ok bool) {
 			d.saved.WriteByte(b)
 		}
 	}
+	d.col++
+	d.colMax = d.col
 	if b == '\n' {
 		d.line++
+		d.col = 0
 	}
 	d.offset++
 	return b, true
@@ -888,6 +902,18 @@ func (d *Decoder) getc() (b byte, ok bool) {
 // and the beginning of the next token.
 func (d *Decoder) InputOffset() int64 {
 	return d.offset
+}
+
+// LineNo returns the input stream line number of the current decoder
+// position.
+func (d *Decoder) LineNo() int {
+	return d.line
+}
+
+// ColumnNo returns the input stream current line's column number of
+// the current decoder position.
+func (d *Decoder) ColumnNo() int {
+	return d.col
 }
 
 // Return saved offset.
@@ -917,9 +943,11 @@ func (d *Decoder) mustgetc() (b byte, ok bool) {
 func (d *Decoder) ungetc(b byte) {
 	if b == '\n' {
 		d.line--
+		d.col = d.colMax
 	}
 	d.nextByte = int(b)
 	d.offset--
+	d.col--
 }
 
 var entity = map[string]int{

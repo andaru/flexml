@@ -583,6 +583,20 @@ func TestSyntaxErrorLineNum(t *testing.T) {
 	}
 }
 
+func TestSyntaxErrorLineNoColumnNo(t *testing.T) {
+	testInput := "<P>Foo<P>\n\n<P>Bar</>\n"
+	d := NewDecoder(strings.NewReader(testInput))
+	var err error
+	for _, err = d.Token(); err == nil; _, err = d.Token() {
+	}
+	if line := d.LineNo(); line != 3 {
+		t.Errorf("LineNo wanted 3, got %d", line)
+	}
+	if col := d.ColumnNo(); col != 8 {
+		t.Errorf("ColumnNo wanted 8, got %d", col)
+	}
+}
+
 func TestTrailingRawToken(t *testing.T) {
 	input := `<FOO></FOO>  `
 	d := NewDecoder(strings.NewReader(input))
@@ -750,6 +764,7 @@ func TestIssue11405(t *testing.T) {
 		"<root>",
 		"<root><foo>",
 		"<root><foo></foo>",
+		"<root><foo></foo>\n",
 	}
 	for _, tc := range testCases {
 		d := NewDecoder(strings.NewReader(tc))
