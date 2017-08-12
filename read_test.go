@@ -752,3 +752,115 @@ func TestInvalidInnerXMLType(t *testing.T) {
 		t.Errorf("NotInnerXML = %v, want nil", v.NotInnerXML)
 	}
 }
+
+func TestDecoderNamespacePrefix(t *testing.T) {
+	xml := `
+<foo xmlns:nc="urn:nc" xmlns:rpc="urn:rpc">
+  <bar xmlns:config="urn:config">
+    <host-name>abc123</host-name>
+  </bar>
+  <baz xmlns:types="urn:types">
+    <nc:capability xmlns:ncx="urn:ncx">ncx:url</nc:capability>
+    <types:host-type xmlns:ncx="urn:new-ncx">server</types:host-type>
+  </baz>
+</foo>
+`
+
+	type mapping struct {
+		prefix    string
+		namespace string
+	}
+
+	for i, test := range []struct {
+		elemName Name
+		want     []mapping
+		dontWant []mapping
+	}{
+		{
+			Name{Local: "foo"},
+			[]mapping{
+				{"nc", "urn:nc"},
+				{"rpc", "urn:rpc"},
+			},
+			[]mapping{
+				{"xyz", "urn:xyz"},
+				{"config", "urn:config"},
+			}},
+		{
+			Name{Local: "bar"},
+			[]mapping{
+				{"nc", "urn:nc"},
+				{"rpc", "urn:rpc"},
+				{"config", "urn:config"},
+			},
+			[]mapping{
+				{"types", "urn:types"},
+			}},
+		{
+			Name{Local: "baz"},
+			[]mapping{
+				{"nc", "urn:nc"},
+				{"rpc", "urn:rpc"},
+				{"types", "urn:types"},
+			},
+			[]mapping{
+				{"config", "urn:config"},
+			}},
+		{
+			Name{Local: "capability", Space: "urn:nc"},
+			[]mapping{
+				{"nc", "urn:nc"},
+				{"rpc", "urn:rpc"},
+				{"types", "urn:types"},
+				{"ncx", "urn:ncx"},
+			},
+			[]mapping{
+				{"config", "urn:config"},
+				{"ncx", "urn:new-ncx"},
+			}},
+		{
+			Name{Local: "host-type", Space: "urn:types"},
+			[]mapping{
+				{"nc", "urn:nc"},
+				{"rpc", "urn:rpc"},
+				{"types", "urn:types"},
+				{"ncx", "urn:new-ncx"},
+			},
+			[]mapping{
+				{"config", "urn:config"},
+				{"ncx", "urn:ncx"},
+			}},
+	} {
+		xmlReader := strings.NewReader(xml)
+		d := NewDecoder(xmlReader)
+		for {
+			token, err := d.Token()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				t.Fatalf("%d: d.Token() want error <nil>, got = %v", i, err)
+			}
+			se, ok := token.(StartElement)
+			if !ok || test.elemName != se.Name {
+				continue
+			}
+			for j, pm := range test.want {
+				if ns := d.Namespace(pm.prefix); ns != pm.namespace {
+					t.Errorf("%d/%d: d.Namespace(%s) = %v, want %v", i, j, pm.prefix, ns, pm.namespace)
+				}
+				if pfx := d.Prefix(pm.namespace); pfx != pm.prefix {
+					t.Errorf("%d/%d: d.Prefix(%s) = %v, want %v", i, j, pm.namespace, pfx, pm.prefix)
+				}
+			}
+			for j, pm := range test.dontWant {
+				if ns := d.Namespace(pm.prefix); ns != "" {
+					if pm.namespace != "" && ns == pm.namespace {
+						t.Errorf("%d/%d: d.Namespace(%s) = %v, don't want %v", i, j, pm.prefix, ns, pm.namespace)
+					} else if pm.namespace == "" {
+						t.Errorf("%d/%d: d.Namespace(%s) has unwanted value %v", i, j, pm.prefix, ns)
+					}
+				}
+			}
+		}
+	}
+}

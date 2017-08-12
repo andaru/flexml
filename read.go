@@ -729,3 +729,20 @@ func (d *Decoder) Skip() error {
 		}
 	}
 }
+
+// Namespace returns the namespace URI for the prefix in the Decoder's
+// prefix registration scope, or the empty string if the prefix is not
+// in the current scope.
+func (d *Decoder) Namespace(prefix string) string { return d.ns[prefix] }
+
+// Prefix searches the decoder's current prefix registrations for a
+// prefix matching the provided namespace. If no such registration is
+// found, the empty string is returned.
+func (d *Decoder) Prefix(namespace string) string {
+	for pfx, ns := range d.ns {
+		if namespace == ns {
+			return pfx
+		}
+	}
+	return ""
+}
