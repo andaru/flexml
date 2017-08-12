@@ -846,3 +846,66 @@ func TestIssue19333(t *testing.T) {
 		}
 	}
 }
+
+type itemStrict struct {
+	Foo string `xml:"foo"`
+}
+
+func TestDecodeUnknownElementHandler(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		input       string
+		wantUnknown []StartElement
+		wantErr     bool
+	}{
+		{
+			name:    "empty input",
+			wantErr: true,
+		},
+		{
+			name:  "present empty element",
+			input: "<itemStrict></itemStrict>",
+		},
+		{
+			name:  "element paths match struct fields",
+			input: "<itemStrict><foo>expected</foo><foo>also permitted</foo></itemStrict>",
+		},
+
+		// unexpected elements (not found in itemStrict's fields)
+		{
+			name:  "matching and unmatching elements",
+			input: "<itemStrict><foo>expected</foo><x><bar>unexpected</bar></x><boo>also unexpected</boo></itemStrict>",
+			wantUnknown: []StartElement{
+				{Name: Name{Local: "x"}},
+				{Name: Name{Local: "boo"}},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var unexpected []StartElement
+			dec := NewDecoder(strings.NewReader(test.input))
+			dec.UnknownElementHandler = func(d *Decoder, se StartElement) error {
+				unexpected = append(unexpected, se)
+				return d.Skip()
+			}
+			var i itemStrict
+			if err := dec.Decode(&i); err != nil {
+				if !test.wantErr {
+					t.Errorf("Decode() error = %v, want nil", err)
+				}
+				return
+			}
+			if len(test.wantUnknown) != len(unexpected) {
+				t.Errorf("want %d unknown elements (%#v), got %d (%#v)",
+					len(test.wantUnknown), test.wantUnknown, len(unexpected), unexpected)
+			} else {
+				for j, item := range test.wantUnknown {
+					if got := unexpected[j]; item.Name != got.Name {
+						t.Errorf("%s/%d: want element %#v, got %#v",
+							test.name, j, item, got)
+					}
+				}
+			}
+		})
+	}
+}

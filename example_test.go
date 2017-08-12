@@ -7,6 +7,7 @@ package flexml_test
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/andaru/flexml"
 )
@@ -149,4 +150,69 @@ func ExampleUnmarshal() {
 	// Email: [{home gre@example.com} {work gre@work.com}]
 	// Groups: [Friends Squash]
 	// Address: {Hanga Roa Easter Island}
+}
+
+func ExampleDecoder_Decode() {
+	// Example of (*Decoder).Decode() using a custom UnknownElementHandler
+	// to record XML elements in the input which do not have corresponding
+	// fields in the struct.
+	type Email struct {
+		Where string `xml:"where,attr"`
+		Addr  string
+	}
+	type Address struct {
+		City, State string
+	}
+	type Result struct {
+		XMLName flexml.Name `xml:"Person"`
+		Name    string      `xml:"FullName"`
+		Phone   string
+		Email   []Email
+		Groups  []string `xml:"Group>Value"`
+		Address
+	}
+	v := Result{Name: "none", Phone: "none"}
+
+	data := `
+		<Person>
+			<FullName>Grace R. Emlin</FullName>
+			<Company>Example Inc.</Company>
+            <Unexpected>Bogus</Unexpected>
+			<Email where="home">
+				<Addr>gre@example.com</Addr>
+			</Email>
+			<Email where='work'>
+				<Addr>gre@work.com</Addr>
+			</Email>
+			<Group>
+                <UnexpectedInner>Bogus</UnexpectedInner>
+				<Value>Friends</Value>
+				<Value>Squash</Value>
+			</Group>
+			<City>Hanga Roa</City>
+			<State>Easter Island</State>
+		</Person>
+	`
+
+	input := flexml.NewDecoder(strings.NewReader(data))
+	var unknown []flexml.StartElement
+	input.UnknownElementHandler = func(d *flexml.Decoder, se flexml.StartElement) error {
+		unknown = append(unknown, se)
+		// UnknownElementHandler must consume all of the
+		// element's tokens
+		return d.Skip()
+	}
+
+	err := input.Decode(&v)
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		return
+	}
+	for _, x := range unknown {
+		fmt.Printf("Unknown: %#v\n", x.Name)
+	}
+	// Output:
+	// Unknown: flexml.Name{Space:"", Local:"Company"}
+	// Unknown: flexml.Name{Space:"", Local:"Unexpected"}
+	// Unknown: flexml.Name{Space:"", Local:"UnexpectedInner"}
 }

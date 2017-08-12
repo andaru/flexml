@@ -164,6 +164,15 @@ type Decoder struct {
 	// of whether an end element is present.
 	AutoClose []string
 
+	// UnknownElementHandler, if non-nil, defines a function called during
+	// struct unmarshaling when a start element not matching any struct field is
+	// found. If UnknownElementHandler returns an error, unmarshaling is halted
+	// and the error is returned to the ultimate caller. The handler must
+	// consume tokens from the Decoder until the EndElement matching the
+	// StartElement. Simple functions without need to read tokens may simply
+	// finish their function with: return (*Decoder).Skip()
+	UnknownElementHandler func(*Decoder, StartElement) error
+
 	// Entity can be used to map non-standard entity names to string replacements.
 	// The parser behaves as if these standard mappings are present in the map,
 	// regardless of the actual map content:

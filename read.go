@@ -120,12 +120,21 @@ import (
 // Unmarshal maps an XML element to a pointer by setting the pointer
 // to a freshly allocated value and then mapping the element to that value.
 //
+// If the Decoder's UnknownElementHandler is set, and an incoming
+// XML element has not been matched to a struct field by one of
+// the above rules, the UnknownElementHandler is called with the
+// current Decoder reference and the unknown StartElement. It is
+// the handler's responsibility to consume all XML tokens until the
+// matching EndElement, such as by calling Skip.
 func Unmarshal(data []byte, v interface{}) error {
 	return NewDecoder(bytes.NewReader(data)).Decode(v)
 }
 
 // Decode works like Unmarshal, except it reads the decoder
 // stream to find the start element.
+//
+// If non-nil, Decoder's UnknownElementHandler will be called for
+// each element seen which does not map to a struct field in v.
 func (d *Decoder) Decode(v interface{}) error {
 	return d.DecodeElement(v, nil)
 }
@@ -134,6 +143,9 @@ func (d *Decoder) Decode(v interface{}) error {
 // a pointer to the start XML element to decode into v.
 // It is useful when a client reads some raw XML tokens itself
 // but also wants to defer to Unmarshal for some elements.
+//
+// If non-nil, Decoder's UnknownElementHandler will be called for
+// each element seen which does not map to a struct field in v.
 func (d *Decoder) DecodeElement(v interface{}, start *StartElement) error {
 	val := reflect.ValueOf(v)
 	if val.Kind() != reflect.Ptr {
@@ -525,7 +537,11 @@ Loop:
 				}
 			}
 			if !consumed {
-				if err := d.Skip(); err != nil {
+				if hdlr := d.UnknownElementHandler; hdlr != nil {
+					if err := hdlr(d, t); err != nil {
+						return err
+					}
+				} else if err := d.Skip(); err != nil {
 					return err
 				}
 			}
@@ -697,7 +713,11 @@ Loop:
 				return true, err
 			}
 			if !consumed2 {
-				if err := d.Skip(); err != nil {
+				if hdlr := d.UnknownElementHandler; hdlr != nil {
+					if err := hdlr(d, t); err != nil {
+						return true, err
+					}
+				} else if err := d.Skip(); err != nil {
 					return true, err
 				}
 			}
