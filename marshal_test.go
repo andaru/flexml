@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package xml
+package flexml
 
 import (
 	"bytes"
@@ -939,7 +939,7 @@ var marshalTests = []struct {
 		UnmarshalOnly: true,
 	},
 
-	// xml.Name works in a plain field as well.
+	// flexml.Name works in a plain field as well.
 	{
 		Value:     &NameInField{Name{Space: "ns", Local: "foo"}},
 		ExpectXML: `<NameInField><foo xmlns="ns"></foo></NameInField>`,
@@ -950,7 +950,7 @@ var marshalTests = []struct {
 		UnmarshalOnly: true,
 	},
 
-	// Marshaling zero xml.Name uses the tag or field name.
+	// Marshaling zero flexml.Name uses the tag or field name.
 	{
 		Value:       &NameInField{},
 		ExpectXML:   `<NameInField><foo xmlns="ns"></foo></NameInField>`,
@@ -1284,7 +1284,7 @@ var marshalTests = []struct {
 	{
 		ExpectXML:    `<IndirComment><T1></T1><T2></T2></IndirComment>`,
 		Value:        &IndirComment{Comment: nil},
-		MarshalError: "xml: bad type for comment field of xml.IndirComment",
+		MarshalError: "xml: bad type for comment field of flexml.IndirComment",
 	},
 	{
 		ExpectXML:     `<IndirComment><T1></T1><!--hi--><T2></T2></IndirComment>`,
@@ -1304,7 +1304,7 @@ var marshalTests = []struct {
 	{
 		ExpectXML:    `<IfaceComment><T1></T1><T2></T2></IfaceComment>`,
 		Value:        &IfaceComment{Comment: nil},
-		MarshalError: "xml: bad type for comment field of xml.IfaceComment",
+		MarshalError: "xml: bad type for comment field of flexml.IfaceComment",
 	},
 	{
 		ExpectXML:     `<IfaceComment><T1></T1><T2></T2></IfaceComment>`,
@@ -1705,7 +1705,7 @@ var marshalErrorTests = []struct {
 	},
 	{
 		Value: map[*Ship]bool{nil: false},
-		Err:   "xml: unsupported type: map[*xml.Ship]bool",
+		Err:   "xml: unsupported type: map[*flexml.Ship]bool",
 		Kind:  reflect.Map,
 	},
 	{

@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package xml implements a simple XML 1.0 parser that
+// package flexml implements a simple XML 1.0 parser that
 // understands XML name spaces.
-package xml
+package flexml
 
 // References:
 //    Annotated XML spec: http://www.xml.com/axml/testaxml.htm

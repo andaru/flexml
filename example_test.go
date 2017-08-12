@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package xml_test
+package flexml_test
 
 import (
-	"encoding/xml"
 	"fmt"
 	"os"
+
+	"github.com/andaru/flexml"
 )
 
 func ExampleMarshalIndent() {
@@ -15,12 +16,12 @@ func ExampleMarshalIndent() {
 		City, State string
 	}
 	type Person struct {
-		XMLName   xml.Name `xml:"person"`
-		Id        int      `xml:"id,attr"`
-		FirstName string   `xml:"name>first"`
-		LastName  string   `xml:"name>last"`
-		Age       int      `xml:"age"`
-		Height    float32  `xml:"height,omitempty"`
+		XMLName   flexml.Name `xml:"person"`
+		Id        int         `xml:"id,attr"`
+		FirstName string      `xml:"name>first"`
+		LastName  string      `xml:"name>last"`
+		Age       int         `xml:"age"`
+		Height    float32     `xml:"height,omitempty"`
 		Married   bool
 		Address
 		Comment string `xml:",comment"`
@@ -30,7 +31,7 @@ func ExampleMarshalIndent() {
 	v.Comment = " Need more details. "
 	v.Address = Address{"Hanga Roa", "Easter Island"}
 
-	output, err := xml.MarshalIndent(v, "  ", "    ")
+	output, err := flexml.MarshalIndent(v, "  ", "    ")
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 	}
@@ -55,12 +56,12 @@ func ExampleEncoder() {
 		City, State string
 	}
 	type Person struct {
-		XMLName   xml.Name `xml:"person"`
-		Id        int      `xml:"id,attr"`
-		FirstName string   `xml:"name>first"`
-		LastName  string   `xml:"name>last"`
-		Age       int      `xml:"age"`
-		Height    float32  `xml:"height,omitempty"`
+		XMLName   flexml.Name `xml:"person"`
+		Id        int         `xml:"id,attr"`
+		FirstName string      `xml:"name>first"`
+		LastName  string      `xml:"name>last"`
+		Age       int         `xml:"age"`
+		Height    float32     `xml:"height,omitempty"`
 		Married   bool
 		Address
 		Comment string `xml:",comment"`
@@ -70,7 +71,7 @@ func ExampleEncoder() {
 	v.Comment = " Need more details. "
 	v.Address = Address{"Hanga Roa", "Easter Island"}
 
-	enc := xml.NewEncoder(os.Stdout)
+	enc := flexml.NewEncoder(os.Stdout)
 	enc.Indent("  ", "    ")
 	if err := enc.Encode(v); err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -103,8 +104,8 @@ func ExampleUnmarshal() {
 		City, State string
 	}
 	type Result struct {
-		XMLName xml.Name `xml:"Person"`
-		Name    string   `xml:"FullName"`
+		XMLName flexml.Name `xml:"Person"`
+		Name    string      `xml:"FullName"`
 		Phone   string
 		Email   []Email
 		Groups  []string `xml:"Group>Value"`
@@ -130,7 +131,7 @@ func ExampleUnmarshal() {
 			<State>Easter Island</State>
 		</Person>
 	`
-	err := xml.Unmarshal([]byte(data), &v)
+	err := flexml.Unmarshal([]byte(data), &v)
 	if err != nil {
 		fmt.Printf("error: %v", err)
 		return
@@ -142,7 +143,7 @@ func ExampleUnmarshal() {
 	fmt.Printf("Groups: %v\n", v.Groups)
 	fmt.Printf("Address: %v\n", v.Address)
 	// Output:
-	// XMLName: xml.Name{Space:"", Local:"Person"}
+	// XMLName: flexml.Name{Space:"", Local:"Person"}
 	// Name: "Grace R. Emlin"
 	// Phone: "none"
 	// Email: [{home gre@example.com} {work gre@work.com}]
