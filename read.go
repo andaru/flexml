@@ -390,9 +390,9 @@ func (p *Decoder) unmarshal(val reflect.Value, start *StartElement) error {
 		v.Set(reflect.Append(val, reflect.Zero(v.Type().Elem())))
 
 		// Recur to read element into slice.
-		if err := p.unmarshal(v.Index(n), start); err != nil {
+		if umerr := p.unmarshal(v.Index(n), start); umerr != nil {
 			v.SetLen(n)
-			return err
+			return umerr
 		}
 		return nil
 

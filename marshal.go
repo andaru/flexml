@@ -504,13 +504,13 @@ func (p *printer) marshalValue(val reflect.Value, finfo *fieldInfo, startTemplat
 		}
 
 		name := Name{Space: finfo.xmlns, Local: finfo.name}
-		if err := p.marshalAttr(&start, name, fv); err != nil {
-			return err
+		if merr := p.marshalAttr(&start, name, fv); merr != nil {
+			return merr
 		}
 	}
 
-	if err := p.writeStart(&start); err != nil {
-		return err
+	if werr := p.writeStart(&start); werr != nil {
+		return werr
 	}
 
 	if val.Kind() == reflect.Struct {
