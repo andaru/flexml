@@ -157,6 +157,8 @@ type Decoder struct {
 	// Such tags are recorded with the unknown prefix as the name space URL.
 	Strict bool
 
+	needClose bool // place beside Strict for alignment
+
 	// When Strict == false, AutoClose indicates a set of elements to
 	// consider closed immediately after they are opened, regardless
 	// of whether an end element is present.
@@ -190,7 +192,6 @@ type Decoder struct {
 	saved          *bytes.Buffer
 	stk            *stack
 	free           *stack
-	needClose      bool
 	toClose        Name
 	nextToken      Token
 	nextByte       int
