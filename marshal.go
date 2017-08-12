@@ -1011,7 +1011,7 @@ func (s *parentStack) push(parents []string) error {
 	return nil
 }
 
-// A MarshalXMLError is returned when Marshal encounters a type
+// UnsupportedTypeError is returned when Marshal encounters a type
 // that cannot be converted into XML.
 type UnsupportedTypeError struct {
 	Type reflect.Type
