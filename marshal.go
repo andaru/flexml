@@ -127,14 +127,26 @@ func MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
 
 // An Encoder writes XML data to an output stream.
 type Encoder struct {
-	p printer
+	p      printer
+	prefix map[string]string
 }
 
 // NewEncoder returns a new encoder that writes to w.
 func NewEncoder(w io.Writer) *Encoder {
-	e := &Encoder{printer{Writer: bufio.NewWriter(w)}}
+	e := &Encoder{printer{Writer: bufio.NewWriter(w)}, map[string]string{}}
 	e.p.encoder = e
 	return e
+}
+
+// AddNamespaceBindings adds the provided prefix to namespace URI
+// bindings to the encoder. These bindings will be used in preference
+// before automatically generated bindings.
+func (enc *Encoder) AddNamespaceBindings(bindings map[string]string) {
+	for prefix, nsuri := range bindings {
+		if prefix != "" {
+			enc.prefix[prefix] = nsuri
+		}
+	}
 }
 
 // Indent sets the encoder to generate XML in which each element
@@ -312,6 +324,9 @@ type printer struct {
 // defining a new prefix if necessary. It returns the prefix.
 func (p *printer) createAttrPrefix(url string) string {
 	if prefix := p.attrPrefix[url]; prefix != "" {
+		return prefix
+	}
+	if prefix := p.encoder.prefix[url]; prefix != "" {
 		return prefix
 	}
 
@@ -686,9 +701,10 @@ func (p *printer) writeStart(start *StartElement) error {
 
 	p.writeIndent(1)
 	p.WriteByte('<')
-	p.WriteString(start.Name.Local)
 
-	if start.Name.Space != "" {
+	tagName, hasPrefix := p.tagName(start.Name)
+	p.WriteString(tagName)
+	if start.Name.Space != "" && !hasPrefix {
 		p.WriteString(` xmlns="`)
 		p.EscapeString(start.Name.Space)
 		p.WriteByte('"')
@@ -714,6 +730,13 @@ func (p *printer) writeStart(start *StartElement) error {
 	return nil
 }
 
+func (p *printer) tagName(name Name) (string, bool) {
+	if url := name.Space; url != "" && p.encoder.prefix[url] != "" {
+		return p.encoder.prefix[url] + ":" + name.Local, true
+	}
+	return name.Local, false
+}
+
 func (p *printer) writeEnd(name Name) error {
 	if name.Local == "" {
 		return fmt.Errorf("xml: end tag with no name")
@@ -732,7 +755,8 @@ func (p *printer) writeEnd(name Name) error {
 	p.writeIndent(-1)
 	p.WriteByte('<')
 	p.WriteByte('/')
-	p.WriteString(name.Local)
+	endTag, _ := p.tagName(name)
+	p.WriteString(endTag)
 	p.WriteByte('>')
 	p.popPrefix()
 	return nil

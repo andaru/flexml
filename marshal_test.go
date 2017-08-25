@@ -2435,3 +2435,74 @@ func TestIssue16158(t *testing.T) {
 		t.Errorf("Unmarshal: expected nil, got error")
 	}
 }
+
+type NamedPassenger struct {
+	XMLName Name     `xml:"urn:foo pax"`
+	Attr    []Attr   `xml:",attr"`
+	Name    []string `xml:"name"`
+	Weight  float32  `xml:"urn:bar weight"`
+}
+
+// Issue 11496. Serializing XML with namespace prefix.
+func TestIssue11496(t *testing.T) {
+	for i, test := range []struct {
+		prefix map[string]string
+		obj    NamedPassenger
+		want   string
+	}{
+		{
+			obj:  NamedPassenger{Name: []string{"alice", "alicia"}, Weight: 114.7},
+			want: `<pax xmlns="urn:foo"><name>alice</name><name>alicia</name><weight xmlns="urn:bar">114.7</weight></pax>`,
+		},
+		{
+			prefix: map[string]string{"urn:foo": "foo"},
+			obj: NamedPassenger{
+				Name:   []string{"alice", "alicia"},
+				Weight: 114.7},
+			want: `<foo:pax><name>alice</name><name>alicia</name><weight xmlns="urn:bar">114.7</weight></foo:pax>`,
+		},
+
+		{
+			obj: NamedPassenger{
+				Name:   []string{"barry"},
+				Attr:   []Attr{{Name: Name{Space: "urn:bar", Local: "comment"}, Value: "<b>hi</b>"}},
+				Weight: 194.7},
+			want: `<pax xmlns="urn:foo" xmlns:_="urn:bar" _:comment="&lt;b&gt;hi&lt;/b&gt;"><name>barry</name><weight xmlns="urn:bar">194.7</weight></pax>`,
+		},
+		{
+			prefix: map[string]string{"urn:foo": "foo"},
+			obj: NamedPassenger{
+				Name:   []string{"barry"},
+				Attr:   []Attr{{Name: Name{Space: "urn:bar", Local: "comment"}, Value: "<b>hi</b>"}},
+				Weight: 194.7},
+			want: `<foo:pax xmlns:_="urn:bar" _:comment="&lt;b&gt;hi&lt;/b&gt;"><name>barry</name><weight xmlns="urn:bar">194.7</weight></foo:pax>`,
+		},
+		{
+			prefix: map[string]string{"urn:bar": "bar"},
+			obj: NamedPassenger{
+				Name:   []string{"barry"},
+				Attr:   []Attr{{Name: Name{Space: "urn:bar", Local: "comment"}, Value: "<b>hi</b>"}},
+				Weight: 194.7},
+			want: `<pax xmlns="urn:foo" bar:comment="&lt;b&gt;hi&lt;/b&gt;"><name>barry</name><bar:weight>194.7</bar:weight></pax>`,
+		},
+		{
+			prefix: map[string]string{"urn:foo": "foo", "urn:bar": "bar"},
+			obj: NamedPassenger{
+				Name:   []string{"barry"},
+				Attr:   []Attr{{Name: Name{Space: "urn:bar", Local: "comment"}, Value: "more & more"}},
+				Weight: 194.7},
+			want: `<foo:pax bar:comment="more &amp; more"><name>barry</name><bar:weight>194.7</bar:weight></foo:pax>`,
+		},
+	} {
+		var buf bytes.Buffer
+		enc := NewEncoder(&buf)
+		enc.AddNamespaceBindings(test.prefix)
+		if err := enc.Encode(test.obj); err != nil {
+			t.Errorf("%d: enc.Encode: want nil error, got %v", i, err)
+		}
+		if buf.String() != test.want {
+			t.Errorf("%d: enc.Encode: expected %q; got %q", i, test.want, buf.String())
+		}
+
+	}
+}
