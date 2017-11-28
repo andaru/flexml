@@ -5,6 +5,7 @@
 package flexml
 
 import (
+	"encoding/xml"
 	"io"
 	"reflect"
 	"strings"
@@ -81,7 +82,7 @@ not being used from outside intra_region_diff.py.
 </summary></entry></feed> 	   `
 
 type Feed struct {
-	XMLName Name      `xml:"http://www.w3.org/2005/Atom feed"`
+	XMLName xml.Name  `xml:"http://www.w3.org/2005/Atom feed"`
 	Title   string    `xml:"title"`
 	ID      string    `xml:"id"`
 	Link    []Link    `xml:"link"`
@@ -117,7 +118,7 @@ type Text struct {
 }
 
 var atomFeed = Feed{
-	XMLName: Name{"http://www.w3.org/2005/Atom", "feed"},
+	XMLName: xml.Name{Space: "http://www.w3.org/2005/Atom", Local: "feed"},
 	Title:   "Code Review - My issues",
 	Link: []Link{
 		{Rel: "alternate", Href: "http://codereview.appspot.com/"},
@@ -344,8 +345,8 @@ const withoutNameTypeData = `
 <Test3 Attr="OK" />`
 
 type TestThree struct {
-	XMLName Name   `xml:"Test3"`
-	Attr    string `xml:",attr"`
+	XMLName xml.Name `xml:"Test3"`
+	Attr    string   `xml:",attr"`
 }
 
 func TestUnmarshalWithoutNameType(t *testing.T) {
@@ -627,7 +628,7 @@ type MyCharData struct {
 	body string
 }
 
-func (m *MyCharData) UnmarshalXML(d *Decoder, start StartElement) error {
+func (m *MyCharData) UnmarshalXML(d *Decoder, start xml.StartElement) error {
 	for {
 		t, err := d.Token()
 		if err == io.EOF { // found end of element
@@ -636,7 +637,7 @@ func (m *MyCharData) UnmarshalXML(d *Decoder, start StartElement) error {
 		if err != nil {
 			return err
 		}
-		if char, ok := t.(CharData); ok {
+		if char, ok := t.(xml.CharData); ok {
 			m.body += string(char)
 		}
 	}
@@ -645,7 +646,7 @@ func (m *MyCharData) UnmarshalXML(d *Decoder, start StartElement) error {
 
 var _ Unmarshaler = (*MyCharData)(nil)
 
-func (m *MyCharData) UnmarshalXMLAttr(attr Attr) error {
+func (m *MyCharData) UnmarshalXMLAttr(attr xml.Attr) error {
 	panic("must not call")
 }
 
@@ -653,7 +654,7 @@ type MyAttr struct {
 	attr string
 }
 
-func (m *MyAttr) UnmarshalXMLAttr(attr Attr) error {
+func (m *MyAttr) UnmarshalXMLAttr(attr xml.Attr) error {
 	m.attr = attr.Value
 	return nil
 }
@@ -754,7 +755,7 @@ func TestInvalidInnerXMLType(t *testing.T) {
 }
 
 func TestDecoderNamespacePrefix(t *testing.T) {
-	xml := `
+	input := `
 <foo xmlns:nc="urn:nc" xmlns:rpc="urn:rpc">
   <bar xmlns:config="urn:config">
     <host-name>abc123</host-name>
@@ -772,12 +773,12 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 	}
 
 	for i, test := range []struct {
-		elemName Name
+		elemName xml.Name
 		want     []mapping
 		dontWant []mapping
 	}{
 		{
-			Name{Local: "foo"},
+			xml.Name{Local: "foo"},
 			[]mapping{
 				{"nc", "urn:nc"},
 				{"rpc", "urn:rpc"},
@@ -787,7 +788,7 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 				{"config", "urn:config"},
 			}},
 		{
-			Name{Local: "bar"},
+			xml.Name{Local: "bar"},
 			[]mapping{
 				{"nc", "urn:nc"},
 				{"rpc", "urn:rpc"},
@@ -797,7 +798,7 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 				{"types", "urn:types"},
 			}},
 		{
-			Name{Local: "baz"},
+			xml.Name{Local: "baz"},
 			[]mapping{
 				{"nc", "urn:nc"},
 				{"rpc", "urn:rpc"},
@@ -807,7 +808,7 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 				{"config", "urn:config"},
 			}},
 		{
-			Name{Local: "capability", Space: "urn:nc"},
+			xml.Name{Local: "capability", Space: "urn:nc"},
 			[]mapping{
 				{"nc", "urn:nc"},
 				{"rpc", "urn:rpc"},
@@ -819,7 +820,7 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 				{"ncx", "urn:new-ncx"},
 			}},
 		{
-			Name{Local: "host-type", Space: "urn:types"},
+			xml.Name{Local: "host-type", Space: "urn:types"},
 			[]mapping{
 				{"nc", "urn:nc"},
 				{"rpc", "urn:rpc"},
@@ -831,7 +832,7 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 				{"ncx", "urn:ncx"},
 			}},
 	} {
-		xmlReader := strings.NewReader(xml)
+		xmlReader := strings.NewReader(input)
 		d := NewDecoder(xmlReader)
 		for {
 			token, err := d.Token()
@@ -840,7 +841,7 @@ func TestDecoderNamespacePrefix(t *testing.T) {
 			} else if err != nil {
 				t.Fatalf("%d: d.Token() want error <nil>, got = %v", i, err)
 			}
-			se, ok := token.(StartElement)
+			se, ok := token.(xml.StartElement)
 			if !ok || test.elemName != se.Name {
 				continue
 			}

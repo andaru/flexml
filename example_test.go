@@ -5,6 +5,7 @@
 package flexml_test
 
 import (
+	"encoding/xml"
 	"fmt"
 	"os"
 	"strings"
@@ -17,12 +18,12 @@ func ExampleMarshalIndent() {
 		City, State string
 	}
 	type Person struct {
-		XMLName   flexml.Name `xml:"person"`
-		Id        int         `xml:"id,attr"`
-		FirstName string      `xml:"name>first"`
-		LastName  string      `xml:"name>last"`
-		Age       int         `xml:"age"`
-		Height    float32     `xml:"height,omitempty"`
+		XMLName   xml.Name `xml:"person"`
+		Id        int      `xml:"id,attr"`
+		FirstName string   `xml:"name>first"`
+		LastName  string   `xml:"name>last"`
+		Age       int      `xml:"age"`
+		Height    float32  `xml:"height,omitempty"`
 		Married   bool
 		Address
 		Comment string `xml:",comment"`
@@ -57,12 +58,12 @@ func ExampleEncoder() {
 		City, State string
 	}
 	type Person struct {
-		XMLName   flexml.Name `xml:"person"`
-		Id        int         `xml:"id,attr"`
-		FirstName string      `xml:"name>first"`
-		LastName  string      `xml:"name>last"`
-		Age       int         `xml:"age"`
-		Height    float32     `xml:"height,omitempty"`
+		XMLName   xml.Name `xml:"person"`
+		Id        int      `xml:"id,attr"`
+		FirstName string   `xml:"name>first"`
+		LastName  string   `xml:"name>last"`
+		Age       int      `xml:"age"`
+		Height    float32  `xml:"height,omitempty"`
 		Married   bool
 		Address
 		Comment string `xml:",comment"`
@@ -105,8 +106,8 @@ func ExampleUnmarshal() {
 		City, State string
 	}
 	type Result struct {
-		XMLName flexml.Name `xml:"Person"`
-		Name    string      `xml:"FullName"`
+		XMLName xml.Name `xml:"Person"`
+		Name    string   `xml:"FullName"`
 		Phone   string
 		Email   []Email
 		Groups  []string `xml:"Group>Value"`
@@ -144,7 +145,7 @@ func ExampleUnmarshal() {
 	fmt.Printf("Groups: %v\n", v.Groups)
 	fmt.Printf("Address: %v\n", v.Address)
 	// Output:
-	// XMLName: flexml.Name{Space:"", Local:"Person"}
+	// XMLName: xml.Name{Space:"", Local:"Person"}
 	// Name: "Grace R. Emlin"
 	// Phone: "none"
 	// Email: [{home gre@example.com} {work gre@work.com}]
@@ -164,8 +165,8 @@ func ExampleDecoder_Decode() {
 		City, State string
 	}
 	type Result struct {
-		XMLName flexml.Name `xml:"Person"`
-		Name    string      `xml:"FullName"`
+		XMLName xml.Name `xml:"Person"`
+		Name    string   `xml:"FullName"`
 		Phone   string
 		Email   []Email
 		Groups  []string `xml:"Group>Value"`
@@ -195,8 +196,8 @@ func ExampleDecoder_Decode() {
 	`
 
 	input := flexml.NewDecoder(strings.NewReader(data))
-	var unknown []flexml.StartElement
-	input.UnknownElementHandler = func(d *flexml.Decoder, se flexml.StartElement) error {
+	var unknown []xml.StartElement
+	input.UnknownElementHandler = func(d *flexml.Decoder, se xml.StartElement) error {
 		unknown = append(unknown, se)
 		// UnknownElementHandler must consume all of the
 		// element's tokens
@@ -212,7 +213,7 @@ func ExampleDecoder_Decode() {
 		fmt.Printf("Unknown: %#v\n", x.Name)
 	}
 	// Output:
-	// Unknown: flexml.Name{Space:"", Local:"Company"}
-	// Unknown: flexml.Name{Space:"", Local:"Unexpected"}
-	// Unknown: flexml.Name{Space:"", Local:"UnexpectedInner"}
+	// Unknown: xml.Name{Space:"", Local:"Company"}
+	// Unknown: xml.Name{Space:"", Local:"Unexpected"}
+	// Unknown: xml.Name{Space:"", Local:"UnexpectedInner"}
 }

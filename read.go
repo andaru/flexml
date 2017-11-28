@@ -7,6 +7,7 @@ package flexml
 import (
 	"bytes"
 	"encoding"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"reflect"
@@ -146,7 +147,7 @@ func (d *Decoder) Decode(v interface{}) error {
 //
 // If non-nil, Decoder's UnknownElementHandler will be called for
 // each element seen which does not map to a struct field in v.
-func (d *Decoder) DecodeElement(v interface{}, start *StartElement) error {
+func (d *Decoder) DecodeElement(v interface{}, start *xml.StartElement) error {
 	val := reflect.ValueOf(v)
 	if val.Kind() != reflect.Ptr {
 		return errors.New("non-pointer passed to Unmarshal")
@@ -175,7 +176,7 @@ func (e UnmarshalError) Error() string { return string(e) }
 // XML object one token at a time.
 // UnmarshalXML may not use d.RawToken.
 type Unmarshaler interface {
-	UnmarshalXML(d *Decoder, start StartElement) error
+	UnmarshalXML(d *Decoder, start xml.StartElement) error
 }
 
 // UnmarshalerAttr is the interface implemented by objects that can unmarshal
@@ -187,7 +188,7 @@ type Unmarshaler interface {
 // UnmarshalXMLAttr is used only for struct fields with the
 // "attr" option in the field tag.
 type UnmarshalerAttr interface {
-	UnmarshalXMLAttr(attr Attr) error
+	UnmarshalXMLAttr(attr xml.Attr) error
 }
 
 // receiverType returns the receiver type to use in an expression like "%s.MethodName".
@@ -201,7 +202,7 @@ func receiverType(val interface{}) string {
 
 // unmarshalInterface unmarshals a single XML element into val.
 // start is the opening tag of the element.
-func (d *Decoder) unmarshalInterface(val Unmarshaler, start *StartElement) error {
+func (d *Decoder) unmarshalInterface(val Unmarshaler, start *xml.StartElement) error {
 	// Record that decoder must stop at end tag corresponding to start.
 	d.pushEOF()
 
@@ -223,7 +224,7 @@ func (d *Decoder) unmarshalInterface(val Unmarshaler, start *StartElement) error
 // unmarshalTextInterface unmarshals a single XML element into val.
 // The chardata contained in the element (but not its children)
 // is passed to the text unmarshaler.
-func (d *Decoder) unmarshalTextInterface(val encoding.TextUnmarshaler, start *StartElement) error {
+func (d *Decoder) unmarshalTextInterface(val encoding.TextUnmarshaler, start *xml.StartElement) error {
 	var buf []byte
 	depth := 1
 	for depth > 0 {
@@ -232,13 +233,13 @@ func (d *Decoder) unmarshalTextInterface(val encoding.TextUnmarshaler, start *St
 			return err
 		}
 		switch t := t.(type) {
-		case CharData:
+		case xml.CharData:
 			if depth == 1 {
 				buf = append(buf, t...)
 			}
-		case StartElement:
+		case xml.StartElement:
 			depth++
-		case EndElement:
+		case xml.EndElement:
 			depth--
 		}
 	}
@@ -246,7 +247,7 @@ func (d *Decoder) unmarshalTextInterface(val encoding.TextUnmarshaler, start *St
 }
 
 // unmarshalAttr unmarshals a single XML attribute into val.
-func (d *Decoder) unmarshalAttr(val reflect.Value, attr Attr) error {
+func (d *Decoder) unmarshalAttr(val reflect.Value, attr xml.Attr) error {
 	if val.Kind() == reflect.Ptr {
 		if val.IsNil() {
 			val.Set(reflect.New(val.Type().Elem()))
@@ -302,14 +303,14 @@ func (d *Decoder) unmarshalAttr(val reflect.Value, attr Attr) error {
 }
 
 var (
-	attrType            = reflect.TypeOf(Attr{})
+	attrType            = reflect.TypeOf(xml.Attr{})
 	unmarshalerType     = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
 	unmarshalerAttrType = reflect.TypeOf((*UnmarshalerAttr)(nil)).Elem()
 	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 )
 
 // Unmarshal a single XML element into val.
-func (d *Decoder) unmarshal(val reflect.Value, start *StartElement) error {
+func (d *Decoder) unmarshal(val reflect.Value, start *xml.StartElement) error {
 	// Find start element if we need it.
 	if start == nil {
 		for {
@@ -317,7 +318,7 @@ func (d *Decoder) unmarshal(val reflect.Value, start *StartElement) error {
 			if err != nil {
 				return err
 			}
-			if t, ok := tok.(StartElement); ok {
+			if t, ok := tok.(xml.StartElement); ok {
 				start = &t
 				break
 			}
@@ -440,7 +441,7 @@ func (d *Decoder) unmarshal(val reflect.Value, start *StartElement) error {
 				return UnmarshalError(e)
 			}
 			fv := finfo.value(sv)
-			if _, ok := fv.Interface().(Name); ok {
+			if _, ok := fv.Interface().(xml.Name); ok {
 				fv.Set(reflect.ValueOf(start.Name))
 			}
 		}
@@ -522,7 +523,7 @@ Loop:
 			return err
 		}
 		switch t := tok.(type) {
-		case StartElement:
+		case xml.StartElement:
 			consumed := false
 			if sv.IsValid() {
 				consumed, err = d.unmarshalPath(tinfo, sv, nil, &t)
@@ -546,7 +547,7 @@ Loop:
 				}
 			}
 
-		case EndElement:
+		case xml.EndElement:
 			if saveXML.IsValid() {
 				saveXMLData = d.saved.Bytes()[saveXMLIndex:savedOffset]
 				if saveXMLIndex == 0 {
@@ -555,12 +556,12 @@ Loop:
 			}
 			break Loop
 
-		case CharData:
+		case xml.CharData:
 			if saveData.IsValid() {
 				data = append(data, t...)
 			}
 
-		case Comment:
+		case xml.Comment:
 			if saveComment.IsValid() {
 				comment = append(comment, t...)
 			}
@@ -664,7 +665,7 @@ func copyValue(dst reflect.Value, src []byte) (err error) {
 // The consumed result tells whether XML elements have been consumed
 // from the Decoder until start's matching end element, or if it's
 // still untouched because start is uninteresting for sv's fields.
-func (d *Decoder) unmarshalPath(tinfo *typeInfo, sv reflect.Value, parents []string, start *StartElement) (consumed bool, err error) {
+func (d *Decoder) unmarshalPath(tinfo *typeInfo, sv reflect.Value, parents []string, start *xml.StartElement) (consumed bool, err error) {
 	recurse := false
 Loop:
 	for i := range tinfo.fields {
@@ -701,13 +702,13 @@ Loop:
 	// or more fields have the path to this element as a parent
 	// prefix. Recurse and attempt to match these.
 	for {
-		var tok Token
+		var tok xml.Token
 		tok, err = d.Token()
 		if err != nil {
 			return true, err
 		}
 		switch t := tok.(type) {
-		case StartElement:
+		case xml.StartElement:
 			consumed2, err := d.unmarshalPath(tinfo, sv, parents, &t)
 			if err != nil {
 				return true, err
@@ -721,7 +722,7 @@ Loop:
 					return true, err
 				}
 			}
-		case EndElement:
+		case xml.EndElement:
 			return true, nil
 		}
 	}
@@ -740,11 +741,11 @@ func (d *Decoder) Skip() error {
 			return err
 		}
 		switch tok.(type) {
-		case StartElement:
+		case xml.StartElement:
 			if err := d.Skip(); err != nil {
 				return err
 			}
-		case EndElement:
+		case xml.EndElement:
 			return nil
 		}
 	}

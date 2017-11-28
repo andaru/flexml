@@ -5,6 +5,7 @@
 package flexml
 
 import (
+	"encoding/xml"
 	"fmt"
 	"reflect"
 	"strings"
@@ -45,7 +46,7 @@ const (
 var tinfoMap = make(map[reflect.Type]*typeInfo)
 var tinfoLock sync.RWMutex
 
-var nameType = reflect.TypeOf(Name{})
+var nameType = reflect.TypeOf(xml.Name{})
 
 // getTypeInfo returns the typeInfo structure with details necessary
 // for marshaling and unmarshaling typ.

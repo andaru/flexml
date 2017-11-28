@@ -4,10 +4,13 @@
 
 package flexml
 
-import "time"
+import (
+	"encoding/xml"
+	"time"
+)
 
 var atomValue = &Feed{
-	XMLName: Name{"http://www.w3.org/2005/Atom", "feed"},
+	XMLName: xml.Name{Space: "http://www.w3.org/2005/Atom", Local: "feed"},
 	Title:   "Example Feed",
 	Link:    []Link{{Href: "http://example.org/"}},
 	Updated: ParseTime("2003-12-13T18:30:02Z"),
